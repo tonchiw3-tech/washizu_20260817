@@ -3,6 +3,7 @@ import java.net.InetSocketAddress;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 public class App {
@@ -97,11 +98,15 @@ public class App {
                 int completedCount = 0;
                 String query = exchange.getRequestURI().getQuery();
                 String filter = "";
+                String sort = "";
                 if (query != null) {
                     for (String parameter : query.split("&")) {
                         String[] keyValue = parameter.split("=", 2);
                         if (keyValue.length == 2 && keyValue[0].equals("filter")) {
                             filter = URLDecoder.decode(keyValue[1], StandardCharsets.UTF_8);
+                        }
+                        if (keyValue.length == 2 && keyValue[0].equals("sort")) {
+                            sort = URLDecoder.decode(keyValue[1], StandardCharsets.UTF_8);
                         }
                     }
                 }
@@ -115,6 +120,12 @@ public class App {
                         continue;
                     }
                     visibleTodos.add(todo);
+                }
+
+                if (sort.equals("new")) {
+                    visibleTodos.sort(Comparator.comparingInt(Todo::getId).reversed());
+                } else if (sort.equals("name")) {
+                    visibleTodos.sort(Comparator.comparing(Todo::getTitle));
                 }
 
                 String html = "<!DOCTYPE html><html lang='ja'><head>"
