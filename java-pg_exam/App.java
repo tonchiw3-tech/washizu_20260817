@@ -94,6 +94,13 @@ public class App {
                 return;
             } else if (path.equals("/")) {
                 // ★追加 画面全体の見た目を整えるHTMLとCSS
+                int remainingCount = 0;
+                for (Todo todo : todos) {
+                    if (!todo.isDone()) {
+                        remainingCount++;
+                    }
+                }
+
                 String html = "<!DOCTYPE html><html lang='ja'><head>"
                         + "<meta charset='UTF-8'>"
                         + "<meta name='viewport' content='width=device-width, initial-scale=1.0'>"
@@ -117,6 +124,7 @@ public class App {
                         + "<form class='add-form' method='post' action='/add'>"
                         + "<input name='todo' placeholder='新しいTodoを入力' autocomplete='off'>"
                         + "<button type='submit'>追加する</button></form>"
+                        + "<p>あと" + remainingCount + "件</p>"
                         + "<ul class='todo-list'>";
                 if (todos.isEmpty()) {
                     html += "<li>やることは、いまゼロです</li>";
