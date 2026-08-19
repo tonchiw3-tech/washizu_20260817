@@ -94,12 +94,7 @@ public class App {
                 return;
             } else if (path.equals("/")) {
                 // ★追加 画面全体の見た目を整えるHTMLとCSS
-                int remainingCount = 0;
-                for (Todo todo : todos) {
-                    if (!todo.isDone()) {
-                        remainingCount++;
-                    }
-                }
+                int completedCount = 0;
 
                 String html = "<!DOCTYPE html><html lang='ja'><head>"
                         + "<meta charset='UTF-8'>"
@@ -124,13 +119,16 @@ public class App {
                         + "<form class='add-form' method='post' action='/add'>"
                         + "<input name='todo' placeholder='新しいTodoを入力' autocomplete='off'>"
                         + "<button type='submit'>追加する</button></form>"
-                        + "<p>あと" + remainingCount + "件</p>"
+                        + "<p>@@TODO_COUNT@@</p>"
                         + "<ul class='todo-list'>";
                 if (todos.isEmpty()) {
                     html += "<li>やることは、いまゼロです</li>";
                 } else {
                     // ★変更 Todo の title を表示し、done のときだけ印を付ける
                     for (Todo todo : todos) {
+                        if (todo.isDone()) {
+                            completedCount++;
+                        }
                         String mark = "";
                         if (todo.isDone()) {
                             mark = " 〔済〕";
@@ -146,6 +144,7 @@ public class App {
                     }
                 }
                 // ★追加 一覧画面のHTMLを閉じる
+                html = html.replace("@@TODO_COUNT@@", todos.size() + "件中" + completedCount + "件 完了");
                 html += "</ul></main></body></html>";
                 message = html;
                 exchange.getResponseHeaders().set("Content-Type", "text/html; charset=UTF-8");
