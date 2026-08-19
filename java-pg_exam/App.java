@@ -187,15 +187,19 @@ public class App {
                 exchange.sendResponseHeaders(303, -1);
                 exchange.close();
                 return;
-            } else if (path.equals("/")) {
+            } else if (path.equals("/") || path.equals("/search")) {
                 // ★追加 画面全体の見た目を整えるHTMLとCSS
                 int completedCount = 0;
                 String query = exchange.getRequestURI().getQuery();
+                String q = "";
                 String filter = "";
                 String sort = "";
                 if (query != null) {
                     for (String parameter : query.split("&")) {
                         String[] keyValue = parameter.split("=", 2);
+                        if (keyValue.length == 2 && keyValue[0].equals("q")) {
+                            q = URLDecoder.decode(keyValue[1], StandardCharsets.UTF_8);
+                        }
                         if (keyValue.length == 2 && keyValue[0].equals("filter")) {
                             filter = URLDecoder.decode(keyValue[1], StandardCharsets.UTF_8);
                         }
@@ -207,6 +211,9 @@ public class App {
 
                 List<Todo> visibleTodos = new ArrayList<>();
                 for (Todo todo : todos) {
+                    if (!q.isEmpty() && !todo.getTitle().contains(q)) {
+                        continue;
+                    }
                     if (filter.equals("todo") && todo.isDone()) {
                         continue;
                     }
@@ -235,6 +242,9 @@ public class App {
                         + ".add-form{display:flex;gap:8px;margin-bottom:20px;}"
                         + ".add-form input{flex:1;min-width:0;padding:10px;font-size:16px;border:1px solid #aaa;border-radius:4px;}"
                         + ".add-form button{padding:10px 14px;font-size:16px;border:1px solid #888;border-radius:4px;background:#f5f5f5;}"
+                        + ".search-form{display:flex;gap:8px;margin-bottom:20px;}"
+                        + ".search-form input{flex:1;min-width:0;padding:10px;font-size:16px;border:1px solid #aaa;border-radius:4px;}"
+                        + ".search-form button{padding:10px 14px;font-size:16px;border:1px solid #888;border-radius:4px;background:#f5f5f5;}"
                         + ".todo-list{margin:0;padding-left:0;list-style:none;}"
                         + ".todo-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #ddd;}"
                         + ".todo-title{font-size:1.05rem;overflow-wrap:anywhere;}"
@@ -247,11 +257,18 @@ public class App {
                         + "<input name='todo' placeholder='新しいTodoを入力' autocomplete='off'>"
                         + "<input type='date' name='deadline' aria-label='締め切り日'>"
                         + "<button type='submit'>追加する</button></form>"
+                        + "<form class='search-form' method='get' action='/search'>"
+                        + "<input name='q' value='" + htmlEscape(q) + "' placeholder='Todoを検索' autocomplete='off'>"
+                        + "<button type='submit'>検索</button></form>"
                         + "<p><a href='/'>全部</a> | <a href='/?filter=todo'>未完了</a> | <a href='/?filter=done'>完了</a></p>"
                         + "<p>@@TODO_COUNT@@</p>"
                         + "<ul class='todo-list'>";
                 if (visibleTodos.isEmpty()) {
-                    html += "<li>やることは、いまゼロです</li>";
+                    if (!q.isEmpty()) {
+                        html += "<li>該当するTodoはありません</li>";
+                    } else {
+                        html += "<li>やることは、いまゼロです</li>";
+                    }
                 } else {
                     // ★変更 Todo の title を表示し、done のときだけ印を付ける
                     for (Todo todo : visibleTodos) {
