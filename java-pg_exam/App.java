@@ -30,12 +30,13 @@ public class App {
                 String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
                 String title = formValue(body, "todo");
                 String deadline = formValue(body, "deadline");
+                String category = formValue(body, "category");
                 if (!deadline.isEmpty() && !deadline.matches("\\d{4}-\\d{2}-\\d{2}")) {
                     deadline = "";
                 }
                 if (!title.isEmpty()) {
                     // ★変更 フォームの内容から Todo を1件作って List に追加する
-                    todos.add(new Todo(nextId, title, deadline));
+                    todos.add(new Todo(nextId, title, deadline, category));
                     // ★変更 次の Todo に使う番号を進める
                     nextId++;
                 }
@@ -62,17 +63,19 @@ public class App {
                 String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
                 String newTitle = formValue(body, "title");
                 String newDeadline = formValue(body, "deadline");
+                String newCategory = formValue(body, "category");
                 if (!newDeadline.isEmpty() && !newDeadline.matches("\\d{4}-\\d{2}-\\d{2}")) {
                     newDeadline = "";
                 }
 
-                // idが一致するTodoを1件特定し、titleとdeadlineを置き換える
+                // idが一致するTodoを1件特定し、title・deadline・categoryを置き換える
                 for (Todo todo : todos) {
                     if (todo.getId() == id) {
                         if (!newTitle.isEmpty()) {
                             todo.setTitle(newTitle);
                         }
                         todo.setDeadline(newDeadline);
+                        todo.setCategory(newCategory);
                         break;
                     }
                 }
@@ -126,6 +129,7 @@ public class App {
                         + "<form class='add-form' method='post' action='/edit?id=" + id + "'>"
                         + "<input name='title' value='" + htmlEscape(editingTodo.getTitle()) + "' autocomplete='off'>"
                         + "<input type='date' name='deadline' value='" + htmlEscape(editingTodo.getDeadline()) + "' aria-label='締め切り日'>"
+                        + "<input name='category' value='" + htmlEscape(editingTodo.getCategory()) + "' placeholder='カテゴリ' autocomplete='off'>"
                         + "<button type='submit'>保存</button></form>"
                         + "<p><a href='/'>一覧に戻る</a></p>"
                         + "</main></body></html>";
@@ -194,6 +198,7 @@ public class App {
                 String q = "";
                 String filter = "";
                 String sort = "";
+                String category = "";
                 if (query != null) {
                     for (String parameter : query.split("&")) {
                         String[] keyValue = parameter.split("=", 2);
@@ -205,6 +210,9 @@ public class App {
                         }
                         if (keyValue.length == 2 && keyValue[0].equals("sort")) {
                             sort = URLDecoder.decode(keyValue[1], StandardCharsets.UTF_8);
+                        }
+                        if (keyValue.length == 2 && keyValue[0].equals("category")) {
+                            category = URLDecoder.decode(keyValue[1], StandardCharsets.UTF_8);
                         }
                     }
                 }
@@ -218,6 +226,9 @@ public class App {
                         continue;
                     }
                     if (filter.equals("done") && !todo.isDone()) {
+                        continue;
+                    }
+                    if (!category.isEmpty() && !todo.getCategory().equals(category)) {
                         continue;
                     }
                     visibleTodos.add(todo);
@@ -256,6 +267,7 @@ public class App {
                         + "<form class='add-form' method='post' action='/add'>"
                         + "<input name='todo' placeholder='新しいTodoを入力' autocomplete='off'>"
                         + "<input type='date' name='deadline' aria-label='締め切り日'>"
+                        + "<input name='category' placeholder='カテゴリ' autocomplete='off'>"
                         + "<button type='submit'>追加する</button></form>"
                         + "<form class='search-form' method='get' action='/search'>"
                         + "<input name='q' value='" + htmlEscape(q) + "' placeholder='Todoを検索' autocomplete='off'>"
@@ -282,9 +294,11 @@ public class App {
                         // ★追加 Todoの状態に応じたクラスと、見た目を整えたリンクを付ける
                         String itemClass = todo.isDone() ? " done" : "";
                         String deadline = todo.getDeadline().isEmpty() ? "締め切りなし" : todo.getDeadline();
+                        String categoryLabel = todo.getCategory().isEmpty() ? "カテゴリなし" : todo.getCategory();
                         html += "<li class='todo-item" + itemClass + "'>"
                                 + "<span class='todo-title'>" + todo.getTitle()
-                                + " <span class='deadline'>締め切り: " + deadline + "</span>" + mark + "</span>"
+                                + " <span class='deadline'>締め切り: " + deadline + "</span>"
+                                + " <span class='category'>カテゴリ: " + htmlEscape(categoryLabel) + "</span>" + mark + "</span>"
                                 + "<span class='actions'>"
                                 + "<a class='edit-link' href='/edit?id=" + todo.getId() + "'>編集</a>"
                                 + "<a class='done-link' href='/done?id=" + todo.getId() + "'>完了</a>"
@@ -447,6 +461,7 @@ class Todo {
     private final int id;
     private String title;
     private String deadline;
+    private String category;
     private boolean done;
 
     // ★変更 Todo は done=false で初期化する
@@ -455,9 +470,14 @@ class Todo {
     }
 
     Todo(int id, String title, String deadline) {
+        this(id, title, deadline, "");
+    }
+
+    Todo(int id, String title, String deadline, String category) {
         this.id = id;
         this.title = title;
         this.deadline = deadline;
+        this.category = category;
         this.done = false;
     }
 
@@ -484,6 +504,16 @@ class Todo {
     // 締め切り日を書き換えるメソッド
     void setDeadline(String deadline) {
         this.deadline = deadline;
+    }
+
+    // カテゴリを読み出すメソッド
+    String getCategory() {
+        return category;
+    }
+
+    // カテゴリを書き換えるメソッド
+    void setCategory(String category) {
+        this.category = category;
     }
 
     // ★変更 done を読み出すメソッド
