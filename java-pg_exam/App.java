@@ -41,6 +41,94 @@ public class App {
                 exchange.close();
                 return;
                 // ★追加 /done?id=数字を受け取り、該当するTodoを完了にする
+            } else if (path.equals("/edit") && method.equals("POST")) {
+                String query = exchange.getRequestURI().getQuery();
+                int id;
+                try {
+                    if (query == null || !query.startsWith("id=")) {
+                        throw new NumberFormatException();
+                    }
+                    id = Integer.parseInt(query.substring(3));
+                } catch (NumberFormatException e) {
+                    exchange.getResponseHeaders().set("Location", "/");
+                    exchange.sendResponseHeaders(303, -1);
+                    exchange.close();
+                    return;
+                }
+
+                String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                String newTitle = "";
+                if (body.startsWith("title=")) {
+                    newTitle = URLDecoder.decode(body.substring(6), StandardCharsets.UTF_8);
+                }
+
+                // idが一致するTodoを1件特定し、空でないtitleだけを置き換える
+                if (!newTitle.isEmpty()) {
+                    for (Todo todo : todos) {
+                        if (todo.getId() == id) {
+                            todo.setTitle(newTitle);
+                            break;
+                        }
+                    }
+                }
+                exchange.getResponseHeaders().set("Location", "/");
+                exchange.sendResponseHeaders(303, -1);
+                exchange.close();
+                return;
+            } else if (path.equals("/edit")) {
+                String query = exchange.getRequestURI().getQuery();
+                int id;
+                try {
+                    if (query == null || !query.startsWith("id=")) {
+                        throw new NumberFormatException();
+                    }
+                    id = Integer.parseInt(query.substring(3));
+                } catch (NumberFormatException e) {
+                    exchange.getResponseHeaders().set("Location", "/");
+                    exchange.sendResponseHeaders(303, -1);
+                    exchange.close();
+                    return;
+                }
+
+                Todo editingTodo = null;
+                for (Todo todo : todos) {
+                    if (todo.getId() == id) {
+                        editingTodo = todo;
+                        break;
+                    }
+                }
+                if (editingTodo == null) {
+                    exchange.getResponseHeaders().set("Location", "/");
+                    exchange.sendResponseHeaders(303, -1);
+                    exchange.close();
+                    return;
+                }
+
+                message = "<!DOCTYPE html><html lang='ja'><head>"
+                        + "<meta charset='UTF-8'>"
+                        + "<meta name='viewport' content='width=device-width, initial-scale=1.0'>"
+                        + "<title>Todoを編集</title>"
+                        + "<style>"
+                        + "*{box-sizing:border-box;}"
+                        + "body{max-width:680px;margin:0 auto;padding:32px 20px;font-family:sans-serif;font-size:16px;line-height:1.6;color:#333;}"
+                        + ".hero{margin-bottom:24px;}"
+                        + ".hero h1{margin:0 0 8px;font-size:24px;}"
+                        + ".add-form{display:flex;gap:8px;margin-bottom:20px;}"
+                        + ".add-form input{flex:1;min-width:0;padding:10px;font-size:16px;border:1px solid #aaa;border-radius:4px;}"
+                        + ".add-form button{padding:10px 14px;font-size:16px;border:1px solid #888;border-radius:4px;background:#f5f5f5;}"
+                        + "</style></head><body><main class='container'>"
+                        + "<header class='hero'><h1>Todoを編集</h1></header>"
+                        + "<form class='add-form' method='post' action='/edit?id=" + id + "'>"
+                        + "<input name='title' value='" + htmlEscape(editingTodo.getTitle()) + "' autocomplete='off'>"
+                        + "<button type='submit'>保存</button></form>"
+                        + "<p><a href='/'>一覧に戻る</a></p>"
+                        + "</main></body></html>";
+                exchange.getResponseHeaders().set("Content-Type", "text/html; charset=UTF-8");
+                byte[] responseBody = message.getBytes(StandardCharsets.UTF_8);
+                exchange.sendResponseHeaders(200, responseBody.length);
+                exchange.getResponseBody().write(responseBody);
+                exchange.getResponseBody().close();
+                return;
             } else if (path.equals("/done")) {
                 String query = exchange.getRequestURI().getQuery();
                 int id;
@@ -172,6 +260,7 @@ public class App {
                         html += "<li class='todo-item" + itemClass + "'>"
                                 + "<span class='todo-title'>" + todo.getTitle() + mark + "</span>"
                                 + "<span class='actions'>"
+                                + "<a class='edit-link' href='/edit?id=" + todo.getId() + "'>編集</a>"
                                 + "<a class='done-link' href='/done?id=" + todo.getId() + "'>完了</a>"
                                 + "<a class='delete-link' href='/delete?id=" + todo.getId() + "'>削除</a>"
                                 + "</span></li>";
@@ -305,12 +394,21 @@ public class App {
         return escaped.toString();
     }
 
+    // 編集フォームのvalue属性に安全に表示するためのHTMLエスケープ
+    static String htmlEscape(String value) {
+        return value.replace("&", "&amp;")
+                .replace("\"", "&quot;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("'", "&#39;");
+    }
+
 }
 
 // ★変更 Todo を表すクラスを追加
 class Todo {
     private final int id;
-    private final String title;
+    private String title;
     private boolean done;
 
     // ★変更 Todo は done=false で初期化する
@@ -328,6 +426,11 @@ class Todo {
     // ★変更 title を読み出すメソッド
     String getTitle() {
         return title;
+    }
+
+    // titleを新しい文字列に置き換えるメソッド
+    void setTitle(String title) {
+        this.title = title;
     }
 
     // ★変更 done を読み出すメソッド
