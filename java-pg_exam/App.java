@@ -28,11 +28,14 @@ public class App {
 
             if (path.equals("/add") && method.equals("POST")) {
                 String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-                String value = body.substring(5);
-                String title = URLDecoder.decode(value, StandardCharsets.UTF_8);
+                String title = formValue(body, "todo");
+                String deadline = formValue(body, "deadline");
+                if (!deadline.isEmpty() && !deadline.matches("\\d{4}-\\d{2}-\\d{2}")) {
+                    deadline = "";
+                }
                 if (!title.isEmpty()) {
                     // ★変更 フォームの内容から Todo を1件作って List に追加する
-                    todos.add(new Todo(nextId, title));
+                    todos.add(new Todo(nextId, title, deadline));
                     // ★変更 次の Todo に使う番号を進める
                     nextId++;
                 }
@@ -239,6 +242,7 @@ public class App {
                         + "<header class='hero'><h1>わたしのTodo</h1><p>今日やることを、すっきり管理しましょう。</p></header>"
                         + "<form class='add-form' method='post' action='/add'>"
                         + "<input name='todo' placeholder='新しいTodoを入力' autocomplete='off'>"
+                        + "<input type='date' name='deadline' aria-label='締め切り日'>"
                         + "<button type='submit'>追加する</button></form>"
                         + "<p><a href='/'>全部</a> | <a href='/?filter=todo'>未完了</a> | <a href='/?filter=done'>完了</a></p>"
                         + "<p>@@TODO_COUNT@@</p>"
@@ -257,8 +261,10 @@ public class App {
                         }
                         // ★追加 Todoの状態に応じたクラスと、見た目を整えたリンクを付ける
                         String itemClass = todo.isDone() ? " done" : "";
+                        String deadline = todo.getDeadline().isEmpty() ? "締め切りなし" : todo.getDeadline();
                         html += "<li class='todo-item" + itemClass + "'>"
-                                + "<span class='todo-title'>" + todo.getTitle() + mark + "</span>"
+                                + "<span class='todo-title'>" + todo.getTitle()
+                                + " <span class='deadline'>締め切り: " + deadline + "</span>" + mark + "</span>"
                                 + "<span class='actions'>"
                                 + "<a class='edit-link' href='/edit?id=" + todo.getId() + "'>編集</a>"
                                 + "<a class='done-link' href='/done?id=" + todo.getId() + "'>完了</a>"
@@ -394,6 +400,17 @@ public class App {
         return escaped.toString();
     }
 
+    // フォームの項目を名前で取り出す
+    static String formValue(String body, String name) {
+        for (String parameter : body.split("&", -1)) {
+            String[] keyValue = parameter.split("=", 2);
+            if (keyValue.length == 2 && name.equals(URLDecoder.decode(keyValue[0], StandardCharsets.UTF_8))) {
+                return URLDecoder.decode(keyValue[1], StandardCharsets.UTF_8);
+            }
+        }
+        return "";
+    }
+
     // 編集フォームのvalue属性に安全に表示するためのHTMLエスケープ
     static String htmlEscape(String value) {
         return value.replace("&", "&amp;")
@@ -409,12 +426,18 @@ public class App {
 class Todo {
     private final int id;
     private String title;
+    private String deadline;
     private boolean done;
 
     // ★変更 Todo は done=false で初期化する
     Todo(int id, String title) {
+        this(id, title, "");
+    }
+
+    Todo(int id, String title, String deadline) {
         this.id = id;
         this.title = title;
+        this.deadline = deadline;
         this.done = false;
     }
 
@@ -431,6 +454,11 @@ class Todo {
     // titleを新しい文字列に置き換えるメソッド
     void setTitle(String title) {
         this.title = title;
+    }
+
+    // 締め切り日を読み出すメソッド
+    String getDeadline() {
+        return deadline;
     }
 
     // ★変更 done を読み出すメソッド
