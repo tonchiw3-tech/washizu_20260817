@@ -97,57 +97,45 @@ public class App {
                 String html = "<!DOCTYPE html><html lang='ja'><head>"
                         + "<meta charset='UTF-8'>"
                         + "<meta name='viewport' content='width=device-width, initial-scale=1.0'>"
-                        + "<title>Todoリスト</title>"
+                        + "<title>わたしのTodo</title>"
                         + "<style>"
                         + "*{box-sizing:border-box;}"
-                        + "body{margin:0;background:linear-gradient(135deg,#eef2ff,#f8fafc);"
-                        + "color:#1f2937;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;}"
-                        + ".container{max-width:720px;margin:0 auto;padding:48px 20px;}"
-                        + ".hero{text-align:center;margin-bottom:28px;}"
-                        + ".hero h1{margin:0 0 8px;color:#3730a3;font-size:2.2rem;}"
-                        + ".hero p{margin:0;color:#64748b;}"
-                        + ".add-form{display:flex;gap:10px;margin-bottom:24px;}"
-                        + ".add-form input{min-width:0;flex:1;padding:13px 15px;border:2px solid #c7d2fe;"
-                        + "border-radius:12px;font-size:1rem;background:#fff;}"
-                        + ".add-form input:focus{outline:none;border-color:#6366f1;box-shadow:0 0 0 4px #c7d2fe;}"
-                        + ".add-form button{border:0;border-radius:12px;padding:0 20px;background:#4f46e5;"
-                        + "color:#fff;font-weight:700;cursor:pointer;}"
-                        + ".add-form button:hover{background:#4338ca;}"
-                        + ".todo-list{display:grid;gap:12px;margin:0;padding:0;list-style:none;}"
-                        + ".todo-item{display:flex;align-items:center;justify-content:space-between;gap:16px;"
-                        + "padding:17px 18px;background:#fff;border:1px solid #e2e8f0;border-radius:16px;"
-                        + "box-shadow:0 8px 20px rgba(15,23,42,.06);}"
+                        + "body{max-width:720px;margin:0 auto;padding:16px;font-family:sans-serif;}"
+                        + ".hero{margin-bottom:16px;}"
+                        + ".hero h1{margin:0 0 8px;font-size:24px;}"
+                        + ".hero p{margin:0;}"
+                        + ".add-form{margin-bottom:16px;}"
+                        + ".add-form input{width:70%;padding:8px;font-size:16px;}"
+                        + ".add-form button{padding:8px;font-size:16px;}"
+                        + ".todo-list{margin:0;padding-left:20px;}"
+                        + ".todo-item{margin-bottom:8px;}"
                         + ".todo-title{font-size:1.05rem;overflow-wrap:anywhere;}"
                         + ".todo-item.done .todo-title{color:#94a3b8;text-decoration:line-through;}"
-                        + ".actions{display:flex;flex-shrink:0;gap:8px;}"
-                        + ".actions a{padding:7px 10px;border-radius:9px;text-decoration:none;font-size:.9rem;font-weight:700;}"
-                        + ".done-link{color:#047857;background:#d1fae5;}"
-                        + ".done-link:hover{background:#a7f3d0;}"
-                        + ".delete-link{color:#be123c;background:#ffe4e6;}"
-                        + ".delete-link:hover{background:#fecdd3;}"
-                        + "@media(max-width:520px){.container{padding:32px 14px;}.add-form{flex-direction:column;}"
-                        + ".add-form button{padding:12px;}.todo-item{align-items:flex-start;flex-direction:column;}"
-                        + ".actions{width:100%;}.actions a{flex:1;text-align:center;}}"
+                        + ".actions a{margin-left:8px;}"
                         + "</style></head><body><main class='container'>"
-                        + "<header class='hero'><h1>Todoリスト</h1><p>今日やることを、すっきり管理しましょう。</p></header>"
+                        + "<header class='hero'><h1>わたしのTodo</h1><p>今日やることを、すっきり管理しましょう。</p></header>"
                         + "<form class='add-form' method='post' action='/add'>"
                         + "<input name='todo' placeholder='新しいTodoを入力' autocomplete='off'>"
                         + "<button type='submit'>追加する</button></form>"
                         + "<ul class='todo-list'>";
-                // ★変更 Todo の title を表示し、done のときだけ印を付ける
-                for (Todo todo : todos) {
-                    String mark = "";
-                    if (todo.isDone()) {
-                        mark = " 〔済〕";
+                if (todos.isEmpty()) {
+                    html += "<li>やることは、いまゼロです</li>";
+                } else {
+                    // ★変更 Todo の title を表示し、done のときだけ印を付ける
+                    for (Todo todo : todos) {
+                        String mark = "";
+                        if (todo.isDone()) {
+                            mark = " 〔済〕";
+                        }
+                        // ★追加 Todoの状態に応じたクラスと、見た目を整えたリンクを付ける
+                        String itemClass = todo.isDone() ? " done" : "";
+                        html += "<li class='todo-item" + itemClass + "'>"
+                                + "<span class='todo-title'>" + todo.getTitle() + mark + "</span>"
+                                + "<span class='actions'>"
+                                + "<a class='done-link' href='/done?id=" + todo.getId() + "'>完了</a>"
+                                + "<a class='delete-link' href='/delete?id=" + todo.getId() + "'>削除</a>"
+                                + "</span></li>";
                     }
-                    // ★追加 Todoの状態に応じたクラスと、見た目を整えたリンクを付ける
-                    String itemClass = todo.isDone() ? " done" : "";
-                    html += "<li class='todo-item" + itemClass + "'>"
-                            + "<span class='todo-title'>" + todo.getTitle() + mark + "</span>"
-                            + "<span class='actions'>"
-                            + "<a class='done-link' href='/done?id=" + todo.getId() + "'>完了</a>"
-                            + "<a class='delete-link' href='/delete?id=" + todo.getId() + "'>削除</a>"
-                            + "</span></li>";
                 }
                 // ★追加 一覧画面のHTMLを閉じる
                 html += "</ul></main></body></html>";
