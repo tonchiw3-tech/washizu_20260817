@@ -60,20 +60,18 @@ public class App {
                 }
 
                 String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-                String newTitle = formValue(body, "title");
-                String newDeadline = formValue(body, "deadline");
-                if (!newDeadline.isEmpty() && !newDeadline.matches("\\d{4}-\\d{2}-\\d{2}")) {
-                    newDeadline = "";
+                String newTitle = "";
+                if (body.startsWith("title=")) {
+                    newTitle = URLDecoder.decode(body.substring(6), StandardCharsets.UTF_8);
                 }
 
-                // idが一致するTodoを1件特定し、titleとdeadlineを置き換える
-                for (Todo todo : todos) {
-                    if (todo.getId() == id) {
-                        if (!newTitle.isEmpty()) {
+                // idが一致するTodoを1件特定し、空でないtitleだけを置き換える
+                if (!newTitle.isEmpty()) {
+                    for (Todo todo : todos) {
+                        if (todo.getId() == id) {
                             todo.setTitle(newTitle);
+                            break;
                         }
-                        todo.setDeadline(newDeadline);
-                        break;
                     }
                 }
                 exchange.getResponseHeaders().set("Location", "/");
@@ -125,7 +123,6 @@ public class App {
                         + "<header class='hero'><h1>Todoを編集</h1></header>"
                         + "<form class='add-form' method='post' action='/edit?id=" + id + "'>"
                         + "<input name='title' value='" + htmlEscape(editingTodo.getTitle()) + "' autocomplete='off'>"
-                        + "<input type='date' name='deadline' value='" + htmlEscape(editingTodo.getDeadline()) + "' aria-label='締め切り日'>"
                         + "<button type='submit'>保存</button></form>"
                         + "<p><a href='/'>一覧に戻る</a></p>"
                         + "</main></body></html>";
@@ -462,11 +459,6 @@ class Todo {
     // 締め切り日を読み出すメソッド
     String getDeadline() {
         return deadline;
-    }
-
-    // 締め切り日を書き換えるメソッド
-    void setDeadline(String deadline) {
-        this.deadline = deadline;
     }
 
     // ★変更 done を読み出すメソッド
