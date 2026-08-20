@@ -1,7 +1,6 @@
 import com.sun.net.httpserver.HttpServer;
 import java.net.InetSocketAddress;
 import java.net.URLDecoder;
-import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -9,9 +8,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Comparator;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 
 public class App {
     // Todoを保存するファイル。java Appを実行した場所に作られます。
@@ -45,13 +42,12 @@ public class App {
                 String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
                 String title = formValue(body, "todo");
                 String deadline = formValue(body, "deadline");
-                String category = formValue(body, "category");
                 if (!deadline.isEmpty() && !deadline.matches("\\d{4}-\\d{2}-\\d{2}")) {
                     deadline = "";
                 }
                 if (!title.isEmpty()) {
                     // ★変更 フォームの内容から Todo を1件作って List に追加する
-                    todos.add(new Todo(nextId, title, deadline, category));
+                    todos.add(new Todo(nextId, title, deadline));
                     // ★変更 次の Todo に使う番号を進める
                     nextId++;
                     save();
@@ -79,19 +75,17 @@ public class App {
                 String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
                 String newTitle = formValue(body, "title");
                 String newDeadline = formValue(body, "deadline");
-                String newCategory = formValue(body, "category");
                 if (!newDeadline.isEmpty() && !newDeadline.matches("\\d{4}-\\d{2}-\\d{2}")) {
                     newDeadline = "";
                 }
 
-                // idが一致するTodoを1件特定し、title・deadline・categoryを置き換える
+                // idが一致するTodoを1件特定し、title・deadlineを置き換える
                 for (Todo todo : todos) {
                     if (todo.getId() == id) {
                         if (!newTitle.isEmpty()) {
                             todo.setTitle(newTitle);
                         }
                         todo.setDeadline(newDeadline);
-                        todo.setCategory(newCategory);
                         break;
                     }
                 }
@@ -147,8 +141,6 @@ public class App {
                         + "<input name='title' value='" + htmlEscape(editingTodo.getTitle()) + "' autocomplete='off'>"
                         + "<input type='date' name='deadline' value='" + htmlEscape(editingTodo.getDeadline())
                         + "' aria-label='締め切り日'>"
-                        + "<input name='category' value='" + htmlEscape(editingTodo.getCategory())
-                        + "' placeholder='カテゴリ' autocomplete='off'>"
                         + "<button type='submit'>保存</button></form>"
                         + "<p><a href='/'>一覧に戻る</a></p>"
                         + "</main></body></html>";
@@ -227,7 +219,6 @@ public class App {
                 String q = "";
                 String filter = "";
                 String sort = "";
-                String category = "";
                 if (query != null) {
                     for (String parameter : query.split("&")) {
                         String[] keyValue = parameter.split("=", 2);
@@ -239,9 +230,6 @@ public class App {
                         }
                         if (keyValue.length == 2 && keyValue[0].equals("sort")) {
                             sort = URLDecoder.decode(keyValue[1], StandardCharsets.UTF_8);
-                        }
-                        if (keyValue.length == 2 && keyValue[0].equals("category")) {
-                            category = URLDecoder.decode(keyValue[1], StandardCharsets.UTF_8);
                         }
                     }
                 }
@@ -257,9 +245,6 @@ public class App {
                     if (filter.equals("done") && !todo.isDone()) {
                         continue;
                     }
-                    if (!category.isEmpty() && !todo.getCategory().equals(category)) {
-                        continue;
-                    }
                     visibleTodos.add(todo);
                 }
 
@@ -267,23 +252,6 @@ public class App {
                     visibleTodos.sort(Comparator.comparingInt(Todo::getId).reversed());
                 } else if (sort.equals("name")) {
                     visibleTodos.sort(Comparator.comparing(Todo::getTitle));
-                }
-
-                Set<String> categories = new LinkedHashSet<>();
-                for (Todo todo : todos) {
-                    if (!todo.getCategory().isEmpty()) {
-                        categories.add(todo.getCategory());
-                    }
-                }
-                StringBuilder categoryLinks = new StringBuilder("<a href='/'>全カテゴリ</a>");
-                for (String categoryName : categories) {
-                    String encodedCategory = URLEncoder.encode(categoryName, StandardCharsets.UTF_8)
-                            .replace("+", "%20");
-                    categoryLinks.append(" | <a href='/?category=")
-                            .append(encodedCategory)
-                            .append("'>")
-                            .append(htmlEscape(categoryName))
-                            .append("</a>");
                 }
 
                 String html = "<!DOCTYPE html><html lang='ja'><head>"
@@ -313,7 +281,6 @@ public class App {
                         + "<form class='add-form' method='post' action='/add'>"
                         + "<input name='todo' placeholder='新しいTodoを入力' autocomplete='off'>"
                         + "<input type='date' name='deadline' aria-label='締め切り日'>"
-                        + "<input name='category' placeholder='カテゴリ' autocomplete='off'>"
                         + "<button type='submit'>追加する</button></form>"
                         + "<form class='search-form' method='get' action='/search'>"
                         + "<input name='q' value='" + htmlEscape(q) + "' placeholder='Todoを検索' autocomplete='off'>"
@@ -321,7 +288,6 @@ public class App {
                         + "<p><a href='/'>全部</a> | <a href='/?filter=todo'>未完了</a> | <a href='/?filter=done'>完了</a></p>"
                         + "<form method='post' action='/delete-completed' onsubmit='return confirm(\"完了済みのTodoをすべて削除しますか？\");'>"
                         + "<button type='submit'>完了済みを一括削除</button></form>"
-                        + "<p>" + categoryLinks + "</p>"
                         + "<p>@@TODO_COUNT@@</p>"
                         + "<ul class='todo-list'>";
                 if (visibleTodos.isEmpty()) {
@@ -343,11 +309,10 @@ public class App {
                         // ★追加 Todoの状態に応じたクラスと、見た目を整えたリンクを付ける
                         String itemClass = todo.isDone() ? " done" : "";
                         String deadline = todo.getDeadline().isEmpty() ? "締め切りなし" : todo.getDeadline();
-                        String categoryLabel = todo.getCategory().isEmpty() ? "カテゴリなし" : todo.getCategory();
                         html += "<li class='todo-item" + itemClass + "'>"
                                 + "<span class='todo-title'>" + todo.getTitle()
                                 + " <span class='deadline'>締め切り: " + deadline + "</span>"
-                                + " <span class='category'>カテゴリ: " + htmlEscape(categoryLabel) + "</span>" + mark
+                                + mark
                                 + "</span>"
                                 + "<span class='actions'>"
                                 + "<a class='edit-link' href='/edit?id=" + todo.getId() + "'>編集</a>"
@@ -407,8 +372,7 @@ public class App {
             lines.add(todo.getId()
                     + "\t" + todo.isDone()
                     + "\t" + encode(todo.getTitle())
-                    + "\t" + encode(todo.getDeadline())
-                    + "\t" + encode(todo.getCategory()));
+                    + "\t" + encode(todo.getDeadline()));
         }
 
         try {
@@ -434,14 +398,15 @@ public class App {
                 }
 
                 String[] fields = line.split("\\t", -1);
-                if (fields.length < 5) {
+                if (fields.length < 4) {
                     continue;
                 }
 
                 try {
                     int id = Integer.parseInt(fields[0]);
                     boolean done = Boolean.parseBoolean(fields[1]);
-                    Todo todo = new Todo(id, decode(fields[2]), decode(fields[3]), decode(fields[4]));
+                    // 旧形式の5項目目（カテゴリ）は読み飛ばし、締め切り日は fields[3] から読み込む
+                    Todo todo = new Todo(id, decode(fields[2]), decode(fields[3]));
                     todo.setDone(done);
                     todos.add(todo);
                     maxId = Math.max(maxId, id);
@@ -575,7 +540,6 @@ class Todo {
     private final int id;
     private String title;
     private String deadline;
-    private String category;
     private boolean done;
 
     // ★変更 Todo は done=false で初期化する
@@ -584,14 +548,9 @@ class Todo {
     }
 
     Todo(int id, String title, String deadline) {
-        this(id, title, deadline, "");
-    }
-
-    Todo(int id, String title, String deadline, String category) {
         this.id = id;
         this.title = title;
         this.deadline = deadline;
-        this.category = category;
         this.done = false;
     }
 
@@ -618,16 +577,6 @@ class Todo {
     // 締め切り日を書き換えるメソッド
     void setDeadline(String deadline) {
         this.deadline = deadline;
-    }
-
-    // カテゴリを読み出すメソッド
-    String getCategory() {
-        return category;
-    }
-
-    // カテゴリを書き換えるメソッド
-    void setCategory(String category) {
-        this.category = category;
     }
 
     // ★変更 done を読み出すメソッド
